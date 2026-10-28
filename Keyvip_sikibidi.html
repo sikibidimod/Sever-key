@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ADMIN SERVER - KEY MANAGER</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;600;700&display=swap');
+        :root { --bg-color: #050505; --panel-bg: rgba(15, 15, 20, 0.8); --primary: #00ffcc; --primary-glow: rgba(0, 255, 204, 0.4); --danger: #ff3366; --text-main: #e0e0e0; --text-muted: #7a7a8c; --border: rgba(0, 255, 204, 0.2); }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Rajdhani', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg-color); background-image: linear-gradient(rgba(0, 255, 204, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 204, 0.03) 1px, transparent 1px); background-size: 30px 30px; color: var(--text-main); padding: 20px; min-height: 100vh; display: flex; justify-content: center; align-items: center; }
+        .container { width: 100%; max-width: 500px; background: var(--panel-bg); border: 1px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8); height: fit-content; }
+        #adminApp { display: none; }
+        #guestApp { display: block; }
+        .header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; }
+        .header h1 { font-family: 'Orbitron', sans-serif; color: var(--primary); font-size: 20px; letter-spacing: 2px; text-shadow: 0 0 10px var(--primary-glow); }
+        .header p { font-size: 13px; color: var(--text-muted); margin-top: 5px; }
+        .section { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; margin-bottom: 15px; }
+        .section-title { font-size: 14px; color: var(--primary); margin-bottom: 10px; font-weight: 700; text-transform: uppercase; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 10px; }
+        .input-group input { flex-grow: 1; padding: 10px 15px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: var(--primary); font-family: 'Orbitron', monospace; font-size: 14px; outline: none; text-transform: uppercase; }
+        .btn { padding: 10px 15px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; text-transform: uppercase; font-size: 13px; text-align: center; }
+        .btn:active { transform: scale(0.95); }
+        .btn-primary { background: var(--primary); color: #000; }
+        .btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+        .btn-danger:active { background: var(--danger); color: #000; }
+        .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+        .btn-block { width: 100%; display: block; }
+        .key-list { max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        .key-item { display: flex; flex-direction: column; background: rgba(255,255,255,0.03); padding: 10px; border-radius: 6px; border-left: 3px solid var(--primary); position: relative; }
+        .key-text { font-family: 'Orbitron', monospace; font-size: 14px; color: var(--text-main); word-break: break-all; margin-bottom: 5px; }
+        .time-info { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); }
+        .countdown { color: #ffaa00; font-family: monospace; font-weight: bold; }
+        .btn-delete { position: absolute; right: 10px; top: 10px; background: transparent; border: none; color: var(--danger); font-size: 20px; cursor: pointer; padding: 0 5px; }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--primary); color: #000; padding: 10px 20px; border-radius: 20px; font-weight: bold; transition: 0.3s; opacity: 0; z-index: 100; }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .error-text { color: var(--danger); font-size: 13px; margin-top: 10px; opacity: 0; transition: 0.3s; text-align: center; }
+        .error-text.show { opacity: 1; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: 0.3s; z-index: 50; }
+        .modal-overlay.show { opacity: 1; visibility: visible; }
+        .modal-box { background: var(--panel-bg); border: 1px solid var(--primary); border-radius: 12px; padding: 25px; width: 90%; max-width: 350px; text-align: center; box-shadow: 0 0 30px rgba(0, 255, 204, 0.2); }
+        .modal-box h3 { font-family: 'Orbitron', sans-serif; color: var(--primary); margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <!-- LOGIN ADMIN -->
+    <div class="modal-overlay show" id="loginModal">
+        <div class="modal-box">
+            <h3>ADMIN LOGIN</h3>
+            <input type="text" class="input-group" id="adminUser" placeholder="Tài khoản" style="width: 100%; padding: 10px; margin-bottom: 10px; text-align: center; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff;">
+            <input type="password" class="input-group" id="adminPass" placeholder="Mật khẩu" style="width: 100%; padding: 10px; margin-bottom: 15px; text-align: center; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff;">
+            <button class="btn btn-primary btn-block" onclick="loginAdmin()">ĐĂNG NHẬP</button>
+            <div class="error-text" id="loginError">Sai tài khoản hoặc mật khẩu!</div>
+        </div>
+    </div>
+
+    <!-- ADMIN APP -->
+    <div class="container" id="adminApp">
+        <div class="header">
+            <h1>ADMIN PANEL</h1>
+            <p>Quản lý Key Server (JSONBin)</p>
+        </div>
+        <div class="section">
+            <div class="section-title">Tạo Key Tự Động (2 Ngày)</div>
+            <button class="btn btn-primary btn-block" onclick="generateKey()">+ TẠO KEY MỚI</button>
+        </div>
+        <div class="section">
+            <div class="section-title">Thêm Key Thủ Công</div>
+            <div class="input-group">
+                <input type="text" id="manualKeyInput" placeholder="LQA_xxxx_xxxx_xxxx">
+                <button class="btn btn-primary" onclick="addManualKey()">THÊM</button>
+            </div>
+        </div>
+        <div class="section">
+            <div class="section-title">Danh Sách Key (<span id="adminKeyCount">0</span>)</div>
+            <div class="key-list" id="adminKeyList"></div>
+            <button class="btn btn-danger btn-block" style="margin-top: 15px;" onclick="clearAllKeys()">XÓA TOÀN BỘ</button>
+        </div>
+        <button class="btn btn-outline btn-block" onclick="logoutAdmin()" style="margin-top: 10px;">ĐĂNG XUẤT</button>
+    </div>
+
+    <div class="toast" id="toast">Thông báo!</div>
+
+    <script>
+        // ==========================================
+        // CẤU HÌNH
+        // ==========================================
+        const ADMIN_USER = "admin";
+        const ADMIN_PASS = "admin123";
+
+        // CẤU HÌNH JSONBIN.IO (Bắt buộc phải có để lưu trữ)
+        const JSONBIN_BIN_ID = "DÁN_BIN_ID_CỦA_BẠN_VÀO_ĐÂY";
+        const JSONBIN_API_KEY = "DÁN_X-MASTER-KEY_CỦA_BẠN_VÀO_ĐÂY";
+
+        const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
+        let keys = []; 
+        let timerInterval;
+
+        // ==========================================
+        // XỬ LÝ ĐĂNG NHẬP
+        // ==========================================
+        function loginAdmin() {
+            const user = document.getElementById('adminUser').value.trim();
+            const pass = document.getElementById('adminPass').value.trim();
+            const err = document.getElementById('loginError');
+
+            if (user === ADMIN_USER && pass === ADMIN_PASS) {
+                document.getElementById('loginModal').classList.remove('show');
+                document.getElementById('adminApp').style.display = 'block';
+                initAdminApp();
+            } else {
+                err.classList.add('show');
+                setTimeout(() => err.classList.remove('show'), 2000);
+            }
+        }
+
+        function logoutAdmin() {
+            document.getElementById('adminApp').style.display = 'none';
+            document.getElementById('loginModal').classList.add('show');
+            document.getElementById('adminUser').value = '';
+            document.getElementById('adminPass').value = '';
+            if(timerInterval) clearInterval(timerInterval);
+        }
+
+        // ==========================================
+        // KẾT NỐI JSONBIN ĐỂ LƯU TRỮ
+        // ==========================================
+        async function initAdminApp() {
+            await fetchKeysFromBin();
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(tickCountdown, 1000);
+        }
+
+        async function fetchKeysFromBin() {
+            try {
+                const binUrl = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`;
+                const response = await fetch(binUrl, {
+                    headers: { 'X-Master-Key': JSONBIN_API_KEY }
+                });
+                const data = await response.json();
+                
+                if (data.record && data.record.keys) {
+                    keys = Object.keys(data.record.keys).map(k => ({
+                        key: k,
+                        created: data.record.keys[k].created,
+                        devices: data.record.keys[k].devices || []
+                    }));
+                } else {
+                    keys = [];
+                }
+                
+                renderAdminKeys();
+            } catch (error) {
+                alert("Lỗi tải dữ liệu từ JSONBin! Kiểm tra lại Bin ID và API Key.");
+            }
+        }
+
+        async function saveKeysToBin() {
+            try {
+                let dataToSave = { keys: {} };
+                keys.forEach(item => {
+                    dataToSave.keys[item.key] = {
+                        created: item.created,
+                        devices: item.devices || []
+                    };
+                });
+
+                const binUrl = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
+                await fetch(binUrl, {
+                    method: 'PUT',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': JSONBIN_API_KEY
+                    },
+                    body: JSON.stringify(dataToSave)
+                });
+                
+                renderAdminKeys();
+            } catch (error) {
+                alert("Lỗi lưu dữ liệu lên JSONBin!");
+            }
+        }
+
+        // ==========================================
+        // TẠO KEY & RENDER
+        // ==========================================
+        function generateRandomKey() {
+            const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+            const getBlock = () => {
+                let block = '';
+                for (let i = 0; i < 4; i++) block += chars.charAt(Math.floor(Math.random() * chars.length));
+                return block;
+            };
+            return `LQA_${getBlock()}_${getBlock()}_${getBlock()}`;
+        }
+
+        function generateKey() {
+            const newKey = generateRandomKey();
+            const timestamp = Date.now();
+            keys.unshift({ key: newKey, created: timestamp, devices: [] });
+            saveKeysToBin();
+            showToast("Đã tạo key mới!");
+        }
+
+        function addManualKey() {
+            const input = document.getElementById('manualKeyInput');
+            let val = input.value.trim().toUpperCase();
+            if (!val.startsWith("LQA_")) { alert("Key phải bắt đầu bằng LQA_"); return; }
+            if (keys.some(k => k.key === val)) { alert("Key này đã tồn tại!"); return; }
+
+            const timestamp = Date.now();
+            keys.unshift({ key: val, created: timestamp, devices: [] });
+            saveKeysToBin();
+            input.value = '';
+            showToast("Đã thêm key!");
+        }
+
+        function deleteKey(index) {
+            if (confirm("Xóa key này?")) {
+                keys.splice(index, 1);
+                saveKeysToBin();
+                showToast("Đã xóa!");
+            }
+        }
+
+        function clearAllKeys() {
+            if (confirm("XÓA TOÀN BỘ KEY?")) {
+                keys = [];
+                saveKeysToBin();
+                showToast("Đã xóa sạch!");
+            }
+        }
+
+        function renderAdminKeys() {
+            const listEl = document.getElementById('adminKeyList');
+            const countEl = document.getElementById('adminKeyCount');
+
+            countEl.textContent = keys.length;
+            listEl.innerHTML = '';
+
+            if (keys.length === 0) {
+                listEl.innerHTML = `<div style="text-align:center; color:var(--text-muted); font-size:13px; padding: 10px;">Chưa có key nào.</div>`;
+            } else {
+                keys.forEach((item, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'key-item';
+                    
+                    const dateObj = new Date(item.created);
+                    const timeStr = `${dateObj.getHours()}:${String(dateObj.getMinutes()).padStart(2, '0')} ${dateObj.getDate()}/${dateObj.getMonth()+1}`;
+                    const devCount = item.devices ? item.devices.length : 0;
+
+                    div.innerHTML = `
+                        <div class="key-text">${item.key}</div>
+                        <div class="time-info">
+                            <span>Tạo: ${timeStr} | Thiết bị: ${devCount}/2</span>
+                            <span class="countdown" id="time-${index}">Đang tính...</span>
+                        </div>
+                        <button class="btn-delete" onclick="deleteKey(${index})">×</button>
+                    `;
+                    listEl.appendChild(div);
+                });
+            }
+        }
+
+        function tickCountdown() {
+            const now = Date.now();
+            keys.forEach((item, index) => {
+                const el = document.getElementById(`time-${index}`);
+                if (!el) return;
+
+                const elapsed = now - item.created;
+                const remaining = TWO_DAYS_MS - elapsed;
+
+                if (remaining <= 0) {
+                    el.textContent = "Hết hạn!";
+                    el.style.color = "var(--danger)";
+                } else {
+                    const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+                    el.textContent = `Còn: ${days}d ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                }
+            });
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+    </script>
+</body>
+  </html>
